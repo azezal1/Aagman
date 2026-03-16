@@ -7,10 +7,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Supabase
-  // Replace with your Supabase credentials
   await Supabase.initialize(
-    url: 'YOUR_SUPABASE_URL',
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
+    url: 'https://pxtydnqkpjjlzzqnqjff.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dHlkbnFrcGpqbHp6cW5xamZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NzU4MDUsImV4cCI6MjA4OTI1MTgwNX0.pX6v-BVAlQnyah5N5bpmFb2sQmZq--cYbs-EKWu0uF0',
   );
   
   runApp(const BusTrackerApp());

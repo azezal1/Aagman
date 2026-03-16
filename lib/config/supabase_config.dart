@@ -1,9 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseConfig {
-  // Replace these with your actual Supabase credentials
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  // Supabase credentials
+  static const String supabaseUrl = 'https://pxtydnqkpjjlzzqnqjff.supabase.co';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dHlkbnFrcGpqbHp6cW5xamZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NzU4MDUsImV4cCI6MjA4OTI1MTgwNX0.pX6v-BVAlQnyah5N5bpmFb2sQmZq--cYbs-EKWu0uF0';
   
   static SupabaseClient get client => Supabase.instance.client;
   
