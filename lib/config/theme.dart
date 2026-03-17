@@ -10,6 +10,7 @@ class AppTheme {
   static const Color border = Color(0xFFE0E4E8);
   static const Color statusBlue = Color(0xFF7B9AAD);
   static const Color statusAmber = Color(0xFFD4A574);
+  static const Color statusRed = Color(0xFFD47474); // Muted red for errors
   static const Color lightGrey = Color(0xFFF5F6F7);
   
   static ThemeData lightTheme = ThemeData(
