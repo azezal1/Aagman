@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/theme.dart';
 import '../models/bus.dart';
 
@@ -12,6 +15,134 @@ class LiveTrackingScreen extends StatefulWidget {
 }
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
+  GoogleMapController? _mapController;
+  final _supabase = Supabase.instance.client;
+  RealtimeChannel? _channel;
+  
+  LatLng _busLocation = const LatLng(23.0225, 72.5714); // Default location
+  Set<Marker> _markers = {};
+  bool _isLoading = true;
+  String _status = 'Connecting...';
+  DateTime? _lastUpdate;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTracking();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeTracking() async {
+    // Get initial location
+    await _getInitialLocation();
+    
+    // Subscribe to real-time updates
+    _subscribeToLocationUpdates();
+  }
+
+  Future<void> _getInitialLocation() async {
+    try {
+      final response = await _supabase
+          .from('bus_locations')
+          .select()
+          .eq('bus_id', widget.bus.id)
+          .order('timestamp', ascending: false)
+          .limit(1);
+
+      if (response.isNotEmpty) {
+        final location = response.first;
+        setState(() {
+          _busLocation = LatLng(
+            location['latitude'],
+            location['longitude'],
+          );
+          _lastUpdate = DateTime.parse(location['timestamp']);
+          _status = 'Live';
+          _isLoading = false;
+        });
+        _updateMarker();
+        _moveCamera();
+      } else {
+        setState(() {
+          _status = 'No location data';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _status = 'Error loading location';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _subscribeToLocationUpdates() {
+    _channel = _supabase
+        .channel('bus_location_${widget.bus.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'bus_locations',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'bus_id',
+            value: widget.bus.id,
+          ),
+          callback: (payload) {
+            final newLocation = payload.newRecord;
+            if (newLocation != null) {
+              setState(() {
+                _busLocation = LatLng(
+                  newLocation['latitude'],
+                  newLocation['longitude'],
+                );
+                _lastUpdate = DateTime.now();
+                _status = 'Live';
+              });
+              _updateMarker();
+              _moveCamera();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  void _updateMarker() {
+    setState(() {
+      _markers = {
+        Marker(
+          markerId: MarkerId(widget.bus.id),
+          position: _busLocation,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: InfoWindow(
+            title: widget.bus.name,
+            snippet: 'Last updated: ${_getTimeAgo()}',
+          ),
+        ),
+      };
+    });
+  }
+
+  void _moveCamera() {
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_busLocation, 15),
+    );
+  }
+
+  String _getTimeAgo() {
+    if (_lastUpdate == null) return 'Unknown';
+    final diff = DateTime.now().difference(_lastUpdate!);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,34 +160,32 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       ),
       body: Stack(
         children: [
-          // Map placeholder
-          Container(
-            color: AppTheme.lightGrey,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.map_outlined,
-                    size: 80,
-                    color: AppTheme.textSecondary.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Map View',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Integrate Google Maps here',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+          // Google Map
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _busLocation,
+              zoom: 15,
+            ),
+            markers: _markers,
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
+          ),
+
+          // Loading Indicator
+          if (_isLoading)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
+                ),
               ),
             ),
-          ),
 
           // Bottom Sheet
           DraggableScrollableSheet(
