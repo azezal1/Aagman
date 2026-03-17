@@ -34,33 +34,84 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Simple bus icon
+            // Logo - will show placeholder until you add logo.png
             Container(
-              width: 80,
-              height: 80,
+              width: 200,
+              height: 200,
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.directions_bus_rounded,
-                size: 48,
-                color: AppTheme.accent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback if logo not found
+                    return Container(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.directions_bus_rounded,
+                            size: 60,
+                            color: AppTheme.accent,
+                          ),
+                          const SizedBox(height: 8),
+                          Icon(
+                            Icons.location_on_rounded,
+                            size: 40,
+                            color: Colors.orange,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             
             // App name
             Text(
-              'Bus Tracker',
-              style: Theme.of(context).textTheme.headlineLarge,
+              'Aagman',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 36,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
             ),
             const SizedBox(height: 8),
             
             // Tagline
             Text(
               'Track your bus in real-time',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Loading indicator
+            SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.accent.withOpacity(0.5),
+                ),
+              ),
             ),
           ],
         ),
