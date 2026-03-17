@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/theme.dart';
 import '../models/bus.dart';
@@ -15,12 +16,12 @@ class LiveTrackingScreen extends StatefulWidget {
 }
 
 class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   final _supabase = Supabase.instance.client;
   RealtimeChannel? _channel;
   
-  LatLng _busLocation = const LatLng(23.0225, 72.5714); // Default location
-  Set<Marker> _markers = {};
+  LatLng _busLocation = LatLng(23.0225, 72.5714); // Default location
+  List<Marker> _markers = [];
   bool _isLoading = true;
   String _status = 'Connecting...';
   DateTime? _lastUpdate;
@@ -34,7 +35,6 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
   @override
   void dispose() {
     _channel?.unsubscribe();
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -73,6 +73,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
           _status = 'No location data';
           _isLoading = false;
         });
+        _updateMarker(); // Show default marker
       }
     } catch (e) {
       setState(() {
@@ -115,24 +116,42 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
 
   void _updateMarker() {
     setState(() {
-      _markers = {
+      _markers = [
         Marker(
-          markerId: MarkerId(widget.bus.id),
-          position: _busLocation,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-          infoWindow: InfoWindow(
-            title: widget.bus.name,
-            snippet: 'Last updated: ${_getTimeAgo()}',
+          width: 80,
+          height: 80,
+          point: _busLocation,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.accent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  widget.bus.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.location_on,
+                color: AppTheme.accent,
+                size: 40,
+              ),
+            ],
           ),
         ),
-      };
+      ];
     });
   }
 
   void _moveCamera() {
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_busLocation, 15),
-    );
+    _mapController.move(_busLocation, 15);
   }
 
   String _getTimeAgo() {
@@ -160,20 +179,25 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       ),
       body: Stack(
         children: [
-          // Google Map
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _busLocation,
-              zoom: 15,
+          // OpenStreetMap
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _busLocation,
+              initialZoom: 15,
+              minZoom: 5,
+              maxZoom: 18,
             ),
-            markers: _markers,
-            onMapCreated: (controller) {
-              _mapController = controller;
-            },
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.bus_tracker',
+                maxZoom: 19,
+              ),
+              MarkerLayer(
+                markers: _markers,
+              ),
+            ],
           ),
 
           // Loading Indicator
@@ -187,23 +211,30 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               ),
             ),
 
-          // Bottom Sheet
+          // Bottom Sheet with enhanced design
           DraggableScrollableSheet(
             initialChildSize: 0.35,
             minChildSize: 0.35,
             maxChildSize: 0.7,
             builder: (context, scrollController) {
               return Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppTheme.surface,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
                 ),
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   children: [
                     // Drag Handle
                     Center(
@@ -216,22 +247,29 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
-                    // Bus Info
+                    // Bus Info with better design
                     Row(
                       children: [
                         Container(
-                          width: 56,
-                          height: 56,
+                          width: 64,
+                          height: 64,
                           decoration: BoxDecoration(
-                            color: AppTheme.accent.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppTheme.accent.withOpacity(0.15),
+                                AppTheme.accent.withOpacity(0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Icon(
                             Icons.directions_bus_rounded,
                             color: AppTheme.accent,
-                            size: 28,
+                            size: 32,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -241,12 +279,44 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                             children: [
                               Text(
                                 widget.bus.name,
-                                style: Theme.of(context).textTheme.headlineMedium,
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                widget.bus.type,
-                                style: Theme.of(context).textTheme.bodyMedium,
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accent.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      widget.bus.type,
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppTheme.accent,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.circle,
+                                    size: 8,
+                                    color: _status == 'Live' ? Colors.green : AppTheme.textSecondary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _status,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: _status == 'Live' ? Colors.green : AppTheme.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -256,21 +326,39 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                     
                     const SizedBox(height: 24),
                     
-                    // Status
+                    // Status with better styling
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppTheme.accent.withOpacity(0.08),
+                            AppTheme.accent.withOpacity(0.04),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppTheme.accent.withOpacity(0.2),
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: AppTheme.accent,
-                            size: 20,
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: AppTheme.accent,
+                              size: 22,
+                            ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,7 +373,9 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Arriving at City Center in 5 min',
-                                  style: Theme.of(context).textTheme.bodyMedium,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -296,18 +386,28 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                     
                     const SizedBox(height: 24),
                     
-                    // Next Stops
-                    Text(
-                      'Next Stops',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    // Next Stops Header
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.route_rounded,
+                          size: 20,
+                          color: AppTheme.textPrimary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Next Stops',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     
-                    _buildStopItem('City Center', '5 min'),
-                    _buildStopItem('Hospital', '15 min'),
-                    _buildStopItem('College', '25 min'),
+                    _buildStopItem('City Center', '5 min', true),
+                    _buildStopItem('Hospital', '15 min', false),
+                    _buildStopItem('College', '25 min', false),
                   ],
                 ),
               );
@@ -318,27 +418,57 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     );
   }
 
-  Widget _buildStopItem(String name, String eta) {
+  Widget _buildStopItem(String name, String eta, bool isNext) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.lightGrey,
-        borderRadius: BorderRadius.circular(10),
+        color: isNext ? AppTheme.accent.withOpacity(0.05) : AppTheme.lightGrey,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isNext ? AppTheme.accent.withOpacity(0.2) : Colors.transparent,
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.circle_outlined, size: 16, color: AppTheme.textSecondary),
-          const SizedBox(width: 12),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isNext ? AppTheme.accent.withOpacity(0.15) : AppTheme.textSecondary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isNext ? Icons.circle : Icons.circle_outlined,
+              size: 14,
+              color: isNext ? AppTheme.accent : AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               name,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: isNext ? FontWeight.w600 : FontWeight.w500,
+                color: isNext ? AppTheme.textPrimary : AppTheme.textSecondary,
+              ),
             ),
           ),
-          Text(
-            eta,
-            style: Theme.of(context).textTheme.bodyMedium,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isNext ? AppTheme.accent.withOpacity(0.15) : AppTheme.textSecondary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              eta,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isNext ? AppTheme.accent : AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),

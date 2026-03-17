@@ -62,6 +62,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
         elevation: 0,
@@ -70,71 +71,136 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Driver Login',
+          'Driver Mode',
           style: Theme.of(context).textTheme.headlineMedium,
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
+              const SizedBox(height: 8),
+              
+              // Welcome Message
+              Text(
+                'Welcome back!',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Login to start your journey and help passengers track your bus in real-time',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 40),
+              
+              // Icon with subtle animation feel
               Center(
                 child: Container(
-                  width: 100,
-                  height: 100,
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.1),
+                    color: AppTheme.accent.withOpacity(0.08),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.accent.withOpacity(0.2),
+                      width: 2,
+                    ),
                   ),
                   child: const Icon(
-                    Icons.person_outline,
-                    size: 50,
+                    Icons.local_shipping_outlined,
+                    size: 56,
                     color: AppTheme.accent,
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
               
               // Driver ID
               Text(
                 'Driver ID',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _driverIdController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter your driver ID',
-                  prefixIcon: Icon(Icons.badge_outlined),
+                style: const TextStyle(fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'e.g., DRV001',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.badge_outlined, color: AppTheme.accent),
+                  filled: true,
+                  fillColor: AppTheme.surface,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border.withOpacity(0.5)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border.withOpacity(0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.accent, width: 2),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.statusRed, width: 1.5),
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter driver ID';
+                    return 'Please enter your driver ID';
                   }
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               
               // Bus Selection
               Text(
                 'Select Your Bus',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _selectedBus,
-                decoration: const InputDecoration(
-                  hintText: 'Choose bus',
-                  prefixIcon: Icon(Icons.directions_bus_outlined),
+                style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Choose your bus',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                  prefixIcon: const Icon(Icons.directions_bus_outlined, color: AppTheme.accent),
+                  filled: true,
+                  fillColor: AppTheme.surface,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border.withOpacity(0.5)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border.withOpacity(0.5)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.accent, width: 2),
+                  ),
                 ),
                 items: buses.map((bus) {
                   return DropdownMenuItem(
@@ -150,57 +216,102 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               ),
               const SizedBox(height: 32),
               
-              // Info Card
+              // Info Card with warmer design
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.accent.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppTheme.accent.withOpacity(0.3),
-                    width: 1,
+                    color: AppTheme.accent.withOpacity(0.15),
+                    width: 1.5,
                   ),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: AppTheme.accent,
-                      size: 24,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: AppTheme.accent,
+                        size: 22,
+                      ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        'Your location will be shared with passengers while tracking is active',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Privacy Notice',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Your location will be shared with passengers while tracking is active. You can stop anytime.',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               
-              // Start Tracking Button
+              // Start Tracking Button with better styling
               SizedBox(
                 width: double.infinity,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _startTracking,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    disabledBackgroundColor: AppTheme.accent.withOpacity(0.5),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 24,
+                          width: 24,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppTheme.surface,
-                            ),
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text('Start Tracking'),
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.play_arrow_rounded, size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Start Tracking',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
