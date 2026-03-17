@@ -3,6 +3,7 @@ import '../config/theme.dart';
 import '../widgets/location_dropdown.dart';
 import 'bus_search_results_screen.dart';
 import 'notifications_screen.dart';
+import 'driver_login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +29,16 @@ class _HomeScreenState extends State<HomeScreen> {
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.drive_eta_outlined, color: AppTheme.textPrimary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverLoginScreen()),
+              );
+            },
+            tooltip: 'Driver Mode',
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: AppTheme.textPrimary),
             onPressed: () {
