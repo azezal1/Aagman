@@ -220,8 +220,8 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: bus.type == 'Government'
-                            ? AppTheme.statusBlue.withOpacity(0.1)
-                            : AppTheme.statusAmber.withOpacity(0.1),
+                            ? AppTheme.info.withOpacity(0.1)
+                            : AppTheme.warning.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -229,8 +229,8 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           color: bus.type == 'Government'
-                              ? AppTheme.statusBlue
-                              : AppTheme.statusAmber,
+                              ? AppTheme.info
+                              : AppTheme.warning,
                         ),
                       ),
                     ),

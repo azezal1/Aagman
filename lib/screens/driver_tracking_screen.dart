@@ -23,7 +23,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
   Timer? _locationTimer;
   Position? _currentPosition;
   int _updateCount = 0;
-  String _status = 'Ready to start';
+  String _status = 'Ready';
   final _supabase = Supabase.instance.client;
 
   @override
@@ -41,9 +41,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
   Future<void> _checkPermissions() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      setState(() {
-        _status = 'Location services disabled';
-      });
+      setState(() => _status = 'Location services disabled');
       return;
     }
 
@@ -51,23 +49,17 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        setState(() {
-          _status = 'Location permission denied';
-        });
+        setState(() => _status = 'Location permission denied');
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      setState(() {
-        _status = 'Location permission permanently denied';
-      });
+      setState(() => _status = 'Location permission permanently denied');
       return;
     }
 
-    setState(() {
-      _status = 'Ready to start';
-    });
+    setState(() => _status = 'Ready');
   }
 
   Future<void> _startTracking() async {
@@ -77,10 +69,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
       _updateCount = 0;
     });
 
-    // Get initial position
     await _updateLocation();
-
-    // Update location every 30 seconds
     _locationTimer = Timer.periodic(
       const Duration(seconds: 30),
       (timer) => _updateLocation(),
@@ -96,15 +85,12 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
       setState(() {
         _currentPosition = position;
         _updateCount++;
-        _status = 'Tracking active';
+        _status = 'Active';
       });
 
-      // Send to Supabase
       await _sendLocationToSupabase(position);
     } catch (e) {
-      setState(() {
-        _status = 'Error: ${e.toString()}';
-      });
+      setState(() => _status = 'Error: ${e.toString()}');
     }
   }
 
@@ -119,13 +105,8 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
         'timestamp': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
-
-      print('Location sent: ${position.latitude}, ${position.longitude}');
     } catch (e) {
-      print('Error sending location: $e');
-      setState(() {
-        _status = 'Upload error: ${e.toString()}';
-      });
+      setState(() => _status = 'Upload error');
     }
   }
 
@@ -133,7 +114,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
     _locationTimer?.cancel();
     setState(() {
       _isTracking = false;
-      _status = 'Tracking stopped';
+      _status = 'Stopped';
     });
   }
 
@@ -157,17 +138,11 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Driver Mode',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontSize: 18,
-              ),
-            ),
+            const Text('Driver Mode'),
             Text(
               widget.driverId,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
               ),
             ),
           ],
@@ -177,137 +152,132 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            // Enhanced Status Card
+            // Status Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    _isTracking
-                        ? AppTheme.accent.withOpacity(0.12)
-                        : AppTheme.textSecondary.withOpacity(0.05),
-                    _isTracking
-                        ? AppTheme.accent.withOpacity(0.05)
-                        : AppTheme.textSecondary.withOpacity(0.02),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
+                color: _isTracking ? AppTheme.primary : AppTheme.surface,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isTracking ? AppTheme.accent.withOpacity(0.3) : AppTheme.border,
-                  width: 1.5,
+                  color: _isTracking ? AppTheme.primary : AppTheme.border,
+                  width: 1,
                 ),
+                boxShadow: _isTracking
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.primary.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : [],
               ),
               child: Column(
                 children: [
-                  // Animated Icon Container
                   Container(
-                    width: 90,
-                    height: 90,
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
                       color: _isTracking
-                          ? AppTheme.accent.withOpacity(0.15)
-                          : AppTheme.textSecondary.withOpacity(0.1),
+                          ? Colors.white.withOpacity(0.2)
+                          : AppTheme.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
-                      boxShadow: _isTracking
-                          ? [
-                              BoxShadow(
-                                color: AppTheme.accent.withOpacity(0.2),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ]
-                          : [],
                     ),
                     child: Icon(
-                      _isTracking ? Icons.gps_fixed : Icons.gps_off,
-                      size: 44,
-                      color: _isTracking ? AppTheme.accent : AppTheme.textSecondary,
+                      _isTracking ? Icons.gps_fixed : Icons.gps_not_fixed,
+                      size: 40,
+                      color: _isTracking ? Colors.white : AppTheme.primary,
                     ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     _status,
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: _isTracking ? AppTheme.accent : AppTheme.textPrimary,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: _isTracking ? Colors.white : AppTheme.textPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _isTracking
                         ? 'Passengers can see your location'
-                        : 'Ready to start tracking',
+                        : 'Tap below to start tracking',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: _isTracking
+                          ? Colors.white.withOpacity(0.9)
+                          : AppTheme.textSecondary,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
-            // Info Cards with better styling
-            _buildInfoCard(
-              'Bus Number',
-              'Bus ${widget.busId}',
-              Icons.directions_bus_rounded,
-              AppTheme.accent,
-            ),
-            const SizedBox(height: 12),
-            _buildInfoCard(
-              'Updates Sent',
-              _updateCount.toString(),
-              Icons.cloud_upload_outlined,
-              AppTheme.accent,
+            // Stats Grid
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Bus',
+                    'Bus ${widget.busId}',
+                    Icons.directions_bus,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Updates',
+                    _updateCount.toString(),
+                    Icons.cloud_upload,
+                  ),
+                ),
+              ],
             ),
             
             if (_currentPosition != null) ...[
               const SizedBox(height: 12),
-              _buildInfoCard(
-                'Current Speed',
-                '${(_currentPosition!.speed * 3.6).toStringAsFixed(1)} km/h',
-                Icons.speed_rounded,
-                AppTheme.accent,
-              ),
-              const SizedBox(height: 12),
-              _buildInfoCard(
-                'Location',
-                '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
-                Icons.location_on_rounded,
-                AppTheme.accent,
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Speed',
+                      '${(_currentPosition!.speed * 3.6).toStringAsFixed(1)} km/h',
+                      Icons.speed,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Accuracy',
+                      '${_currentPosition!.accuracy.toStringAsFixed(0)}m',
+                      Icons.my_location,
+                    ),
+                  ),
+                ],
               ),
             ],
             
             const Spacer(),
             
-            // Enhanced Control Button
+            // Control Button
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: _isTracking ? _stopTracking : _startTracking,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isTracking
-                      ? AppTheme.statusAmber
-                      : AppTheme.accent,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
+                  backgroundColor: _isTracking ? AppTheme.error : AppTheme.primary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      _isTracking ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+                      _isTracking ? Icons.stop_circle : Icons.play_circle_filled,
                       size: 24,
                     ),
                     const SizedBox(width: 10),
@@ -325,80 +295,58 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
             
             const SizedBox(height: 16),
             
-            // Info Text with icon
+            // Info Text
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.info_outline,
                   size: 16,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.textTertiary,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   _isTracking
-                      ? 'Location shared every 30 seconds'
-                      : 'Tap to start sharing your location',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
+                      ? 'Location updates every 30 seconds'
+                      : 'GPS tracking will start immediately',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textTertiary,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard(String label, String value, IconData icon, Color iconColor) {
+  Widget _buildStatCard(String label, String value, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border.withOpacity(0.5), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+          Icon(icon, color: AppTheme.primary, size: 20),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.textSecondary,
             ),
-            child: Icon(icon, color: iconColor, size: 22),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
             ),
           ),
         ],
@@ -412,7 +360,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Stop Tracking?'),
         content: const Text(
-          'Are you sure you want to stop tracking? Passengers will no longer see your location.',
+          'Passengers will no longer see your location. Are you sure?',
         ),
         actions: [
           TextButton(
@@ -425,6 +373,9 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
               _stopTracking();
               Navigator.pop(context);
             },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.error,
+            ),
             child: const Text('Stop'),
           ),
         ],

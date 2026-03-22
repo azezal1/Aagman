@@ -5,6 +5,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/theme.dart';
 import '../models/bus.dart';
+import 'report_delay_screen.dart';
+import 'rate_bus_screen.dart';
+import 'rate_driver_screen.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   final Bus bus;
@@ -408,12 +411,134 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                     _buildStopItem('City Center', '5 min', true),
                     _buildStopItem('Hospital', '15 min', false),
                     _buildStopItem('College', '25 min', false),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Community Features
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.people_rounded,
+                          size: 20,
+                          color: AppTheme.textPrimary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Community',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCommunityButton(
+                            context,
+                            'Report Delay',
+                            Icons.warning_amber_rounded,
+                            AppTheme.warning,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ReportDelayScreen(
+                                    busId: widget.bus.id,
+                                    busName: widget.bus.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildCommunityButton(
+                            context,
+                            'Rate Bus',
+                            Icons.star_rounded,
+                            AppTheme.primary,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RateBusScreen(
+                                    busId: widget.bus.id,
+                                    busName: widget.bus.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _buildCommunityButton(
+                        context,
+                        'Rate Driver',
+                        Icons.person_rounded,
+                        AppTheme.secondary,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RateDriverScreen(
+                                driverId: 'DRV001', // In production, get from bus data
+                                busId: widget.bus.id,
+                                busName: widget.bus.name,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               );
             },
           ),
         ],
+      ),
+    );
+  }
+  
+  Widget _buildCommunityButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

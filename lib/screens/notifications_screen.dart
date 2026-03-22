@@ -85,7 +85,7 @@ class NotificationsScreen extends StatelessWidget {
         break;
       case 'boarding':
         icon = Icons.directions_bus;
-        iconColor = AppTheme.statusBlue;
+        iconColor = AppTheme.info;
         break;
       default:
         icon = Icons.info_outline;
