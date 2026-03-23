@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
-import 'screens/splash_screen.dart';
+import 'screens/video_splash_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'services/notification_service.dart';
@@ -34,17 +34,11 @@ class BusTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return MaterialApp(
-          title: 'Aagman',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.theme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
-          home: const SplashScreen(),
-        );
-      },
+    return MaterialApp(
+      title: 'Aagman',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.theme,
+      home: const VideoSplashScreen(),
     );
   }
 }

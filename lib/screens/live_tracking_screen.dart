@@ -18,34 +18,38 @@ class LiveTrackingScreen extends StatefulWidget {
   State<LiveTrackingScreen> createState() => _LiveTrackingScreenState();
 }
 
-class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
+class _LiveTrackingScreenState extends State<LiveTrackingScreen> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final _supabase = Supabase.instance.client;
   RealtimeChannel? _channel;
+  late AnimationController _pulseController;
   
-  LatLng _busLocation = LatLng(23.0225, 72.5714); // Default location
+  LatLng _busLocation = LatLng(23.0225, 72.5714);
   List<Marker> _markers = [];
   bool _isLoading = true;
   String _status = 'Connecting...';
   DateTime? _lastUpdate;
+  int _estimatedMinutes = 2; // Mock data
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
     _initializeTracking();
   }
 
   @override
   void dispose() {
     _channel?.unsubscribe();
+    _pulseController.dispose();
     super.dispose();
   }
 
   Future<void> _initializeTracking() async {
-    // Get initial location
     await _getInitialLocation();
-    
-    // Subscribe to real-time updates
     _subscribeToLocationUpdates();
   }
 
@@ -61,26 +65,23 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       if (response.isNotEmpty) {
         final location = response.first;
         setState(() {
-          _busLocation = LatLng(
-            location['latitude'],
-            location['longitude'],
-          );
+          _busLocation = LatLng(location['latitude'], location['longitude']);
           _lastUpdate = DateTime.parse(location['timestamp']);
-          _status = 'Live';
+          _status = 'LIVE';
           _isLoading = false;
         });
         _updateMarker();
         _moveCamera();
       } else {
         setState(() {
-          _status = 'No location data';
+          _status = 'NO DATA';
           _isLoading = false;
         });
-        _updateMarker(); // Show default marker
+        _updateMarker();
       }
     } catch (e) {
       setState(() {
-        _status = 'Error loading location';
+        _status = 'ERROR';
         _isLoading = false;
       });
     }
@@ -107,7 +108,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                   newLocation['longitude'],
                 );
                 _lastUpdate = DateTime.now();
-                _status = 'Live';
+                _status = 'LIVE';
               });
               _updateMarker();
               _moveCamera();
@@ -121,32 +122,41 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     setState(() {
       _markers = [
         Marker(
-          width: 80,
-          height: 80,
+          width: 60,
+          height: 60,
           point: _busLocation,
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.accent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  widget.bus.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+          child: AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Pulse effect
+                  Container(
+                    width: 60 * (1 + _pulseController.value * 0.3),
+                    height: 60 * (1 + _pulseController.value * 0.3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.primary.withOpacity(0.3 * (1 - _pulseController.value)),
+                    ),
                   ),
-                ),
-              ),
-              const Icon(
-                Icons.location_on,
-                color: AppTheme.accent,
-                size: 40,
-              ),
-            ],
+                  // Bus marker
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.black,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions_bus,
+                      color: AppTheme.white,
+                      size: 24,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ];
@@ -157,32 +167,13 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
     _mapController.move(_busLocation, 15);
   }
 
-  String _getTimeAgo() {
-    if (_lastUpdate == null) return 'Unknown';
-    final diff = DateTime.now().difference(_lastUpdate!);
-    if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Live Tracking',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-      ),
+      backgroundColor: AppTheme.white,
       body: Stack(
         children: [
-          // OpenStreetMap
+          // Full-screen Map
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
@@ -197,250 +188,159 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                 userAgentPackageName: 'com.example.bus_tracker',
                 maxZoom: 19,
               ),
-              MarkerLayer(
-                markers: _markers,
-              ),
+              MarkerLayer(markers: _markers),
             ],
           ),
 
-          // Loading Indicator
-          if (_isLoading)
-            Container(
-              color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
-                ),
-              ),
-            ),
-
-          // Bottom Sheet with enhanced design
-          DraggableScrollableSheet(
-            initialChildSize: 0.35,
-            minChildSize: 0.35,
-            maxChildSize: 0.7,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
+          // Top Bar - Bold timing
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Back button
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppTheme.black),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    // Drag Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppTheme.border,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Bus Info with better design
-                    Row(
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppTheme.accent.withOpacity(0.15),
-                                AppTheme.accent.withOpacity(0.08),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.directions_bus_rounded,
-                            color: AppTheme.accent,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.bus.name,
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.accent.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      widget.bus.type,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppTheme.accent,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.circle,
-                                    size: 8,
-                                    color: _status == 'Live' ? Colors.green : AppTheme.textSecondary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _status,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: _status == 'Live' ? Colors.green : AppTheme.textSecondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Status with better styling
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppTheme.accent.withOpacity(0.08),
-                            AppTheme.accent.withOpacity(0.04),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: AppTheme.accent.withOpacity(0.2),
-                          width: 1,
-                        ),
+                  const SizedBox(width: 12),
+                  // Bold timing display
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      decoration: const BoxDecoration(
+                        color: AppTheme.black,
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.location_on_rounded,
-                              color: AppTheme.accent,
-                              size: 22,
+                          Text(
+                            '${widget.bus.name.toUpperCase()} — ',
+                            style: const TextStyle(
+                              color: AppTheme.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'On the way',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.accent,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Arriving at City Center in 5 min',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                ),
-                              ],
+                          Text(
+                            '$_estimatedMinutes MIN',
+                            style: const TextStyle(
+                              color: AppTheme.success,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Next Stops Header
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.route_rounded,
-                          size: 20,
-                          color: AppTheme.textPrimary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Draggable Bottom Sheet
+          DraggableScrollableSheet(
+            initialChildSize: 0.25,
+            minChildSize: 0.25,
+            maxChildSize: 0.75,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: AppTheme.white,
+                  border: Border(
+                    top: BorderSide(color: AppTheme.black, width: 3),
+                  ),
+                ),
+                child: ListView(
+                  controller: scrollController,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 48,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.black,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Next Stops',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 14),
                     
-                    _buildStopItem('City Center', '5 min', true),
-                    _buildStopItem('Hospital', '15 min', false),
-                    _buildStopItem('College', '25 min', false),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Community Features
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.people_rounded,
-                          size: 20,
-                          color: AppTheme.textPrimary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Community',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Status indicator
+                          Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: _status == 'LIVE' ? AppTheme.success : AppTheme.greyDark,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _status,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCommunityButton(
-                            context,
-                            'Report Delay',
-                            Icons.warning_amber_rounded,
-                            AppTheme.warning,
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Next stops - Bold timeline
+                          const Text(
+                            'NEXT STOPS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          _buildStopItem('CITY CENTER', '2 MIN', true),
+                          _buildStopItem('HOSPITAL', '8 MIN', false),
+                          _buildStopItem('COLLEGE', '15 MIN', false),
+                          _buildStopItem('RAILWAY STATION', '22 MIN', false),
+                          
+                          const SizedBox(height: 32),
+                          
+                          // Action buttons
+                          const Text(
+                            'ACTIONS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          _buildActionButton(
+                            'REPORT DELAY',
+                            Icons.warning_amber,
                             () {
                               Navigator.push(
                                 context,
@@ -453,14 +353,10 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                               );
                             },
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildCommunityButton(
-                            context,
-                            'Rate Bus',
-                            Icons.star_rounded,
-                            AppTheme.primary,
+                          const SizedBox(height: 12),
+                          _buildActionButton(
+                            'RATE BUS',
+                            Icons.star,
                             () {
                               Navigator.push(
                                 context,
@@ -473,29 +369,24 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
                               );
                             },
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _buildCommunityButton(
-                        context,
-                        'Rate Driver',
-                        Icons.person_rounded,
-                        AppTheme.secondary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RateDriverScreen(
-                                driverId: 'DRV001', // In production, get from bus data
-                                busId: widget.bus.id,
-                                busName: widget.bus.name,
-                              ),
-                            ),
-                          );
-                        },
+                          const SizedBox(height: 12),
+                          _buildActionButton(
+                            'RATE DRIVER',
+                            Icons.person,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RateDriverScreen(
+                                    driverId: 'DRV001',
+                                    busId: widget.bus.id,
+                                    busName: widget.bus.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -503,42 +394,19 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
               );
             },
           ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildCommunityButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
+
+          // Loading overlay
+          if (_isLoading)
+            Container(
+              color: AppTheme.white.withOpacity(0.9),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.black),
+                  strokeWidth: 3,
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -548,54 +416,71 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isNext ? AppTheme.accent.withOpacity(0.05) : AppTheme.lightGrey,
-        borderRadius: BorderRadius.circular(12),
+        color: isNext ? AppTheme.black : AppTheme.grey,
         border: Border.all(
-          color: isNext ? AppTheme.accent.withOpacity(0.2) : Colors.transparent,
-          width: 1,
+          color: AppTheme.black,
+          width: 2,
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
-              color: isNext ? AppTheme.accent.withOpacity(0.15) : AppTheme.textSecondary.withOpacity(0.1),
+              color: isNext ? AppTheme.white : AppTheme.black,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              isNext ? Icons.circle : Icons.circle_outlined,
-              size: 14,
-              color: isNext ? AppTheme.accent : AppTheme.textSecondary,
-            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Text(
               name,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: isNext ? FontWeight.w600 : FontWeight.w500,
-                color: isNext ? AppTheme.textPrimary : AppTheme.textSecondary,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isNext ? AppTheme.white : AppTheme.black,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isNext ? AppTheme.accent.withOpacity(0.15) : AppTheme.textSecondary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              eta,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: isNext ? AppTheme.accent : AppTheme.textSecondary,
-                fontSize: 13,
-              ),
+          Text(
+            eta,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: isNext ? AppTheme.success : AppTheme.greyDark,
+              letterSpacing: 0.5,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.white,
+          border: Border.all(color: AppTheme.black, width: 2),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.black, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

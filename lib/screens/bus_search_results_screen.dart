@@ -71,8 +71,9 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
     final buses = _getFilteredBuses();
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
@@ -101,10 +102,10 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
           // Filter and Sort Section
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppTheme.surface,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
-                bottom: BorderSide(color: AppTheme.border, width: 0.5),
+                bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
               ),
             ),
             child: Row(
@@ -183,9 +184,9 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border, width: 0.5),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
       ),
       child: Column(
         children: [
@@ -306,7 +307,7 @@ class _BusSearchResultsScreenState extends State<BusSearchResultsScreen> {
                     );
                   },
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.border),
+                    side: BorderSide(color: Theme.of(context).dividerColor),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

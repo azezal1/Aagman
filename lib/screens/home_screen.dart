@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/theme.dart';
-import '../widgets/location_dropdown.dart';
-import 'bus_search_results_screen.dart';
-import 'notifications_screen.dart';
+import '../widgets/bus_card.dart';
+import '../widgets/quick_access_button.dart';
 import 'driver_login_screen.dart';
 import 'travel_analytics_screen.dart';
 
@@ -15,52 +16,42 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  int _selectedIndex = 0;
-  String? _fromLocation;
-  String? _toLocation;
-  DateTime _selectedDate = DateTime.now();
-  late AnimationController _busAnimationController;
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _currentLocation = "Fetching location...";
   bool _isLoadingLocation = true;
   Position? _currentPosition;
   final _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _nearbyBuses = [];
 
   @override
   void initState() {
     super.initState();
-    _busAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
     _getCurrentLocation();
   }
 
   @override
   void dispose() {
-    _busAnimationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _getCurrentLocation() async {
     try {
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        if (!mounted) return;
         setState(() {
           _currentLocation = "Location services disabled";
           _isLoadingLocation = false;
         });
-        _showLocationDialog();
         return;
       }
 
-      // Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          if (!mounted) return;
           setState(() {
             _currentLocation = "Location permission denied";
             _isLoadingLocation = false;
@@ -70,31 +61,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
 
       if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
         setState(() {
           _currentLocation = "Location permission denied";
           _isLoadingLocation = false;
         });
-        _showLocationDialog();
         return;
       }
 
-      // Get current position
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
+      if (!mounted) return;
       setState(() {
         _currentPosition = position;
         _isLoadingLocation = false;
       });
 
-      // Get location name (you can use geocoding package for this)
-      // For now, we'll use coordinates
       _updateLocationName(position);
-      
-      // Fetch nearby buses
-      _fetchNearbyBuses(position);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _currentLocation = "Unable to get location";
         _isLoadingLocation = false;
@@ -102,765 +89,508 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _updateLocationName(Position position) {
-    // In production, use geocoding to convert coordinates to address
-    // For now, showing coordinates
-    setState(() {
-      _currentLocation = "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
-    });
-  }
-
-  Future<void> _fetchNearbyBuses(Position position) async {
+  void _updateLocationName(Position position) async {
     try {
-      // Fetch buses from Supabase
-      // In production, you'd query based on distance from current location
-      final response = await _supabase
-          .from('buses')
-          .select()
-          .limit(3);
-
-      if (response != null) {
-        setState(() {
-          _nearbyBuses = List<Map<String, dynamic>>.from(response);
-        });
+      String locationName = _getLocationFromCoordinates(position.latitude, position.longitude);
+      
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          
+          if (place.locality != null && place.locality!.isNotEmpty) {
+            locationName = place.locality!;
+            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+              locationName += ', ${place.administrativeArea}';
+            }
+          } else if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+            locationName = place.subLocality!;
+            if (place.locality != null && place.locality!.isNotEmpty) {
+              locationName += ', ${place.locality}';
+            }
+          } else if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+            locationName = place.administrativeArea!;
+          }
+        }
+      } catch (e) {
+        print('Geocoding failed, using fallback: $e');
       }
+      
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = locationName;
+      });
     } catch (e) {
-      print('Error fetching nearby buses: $e');
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = _getLocationFromCoordinates(position.latitude, position.longitude);
+      });
     }
   }
-
-  void _showLocationDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Location Access'),
-        content: const Text(
-          'This app needs location access to show nearby buses and provide accurate tracking.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Geolocator.openLocationSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _refreshLocation() {
-    setState(() {
-      _isLoadingLocation = true;
-      _currentLocation = "Fetching location...";
-    });
-    _getCurrentLocation();
+  
+  String _getLocationFromCoordinates(double lat, double lng) {
+    if (lat >= 12.8 && lat <= 13.3 && lng >= 80.0 && lng <= 80.5) {
+      return 'Chennai, Tamil Nadu';
+    } else if (lat >= 18.9 && lat <= 19.3 && lng >= 72.7 && lng <= 73.0) {
+      return 'Mumbai, Maharashtra';
+    } else if (lat >= 28.4 && lat <= 28.9 && lng >= 76.8 && lng <= 77.3) {
+      return 'Delhi';
+    } else if (lat >= 12.8 && lat <= 13.2 && lng >= 77.4 && lng <= 77.8) {
+      return 'Bangalore, Karnataka';
+    } else if (lat >= 8.0 && lat <= 35.0 && lng >= 68.0 && lng <= 97.0) {
+      return 'India';
+    } else {
+      return "${lat.toStringAsFixed(2)}°, ${lng.toStringAsFixed(2)}°";
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: Stack(
+      body: Column(
         children: [
-          // Background Pattern - Bus themed
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.03,
-              child: CustomPaint(
-                painter: BusPatternPainter(),
+          // Top App Bar
+          Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              border: Border(
+                bottom: BorderSide(color: Color(0xFF0F172A), width: 2),
               ),
             ),
-          ),
-          
-          // Main Content
-          CustomScrollView(
-            slivers: [
-              // Enhanced Header with Location
-              SliverAppBar(
-                expandedHeight: 140,
-                floating: false,
-                pinned: true,
-                elevation: 0,
-                backgroundColor: AppTheme.surface,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppTheme.primary,
-                          AppTheme.primaryLight,
-                        ],
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Top Row - Logo and Actions
-                            Row(
-                              children: [
-                                // Animated Bus Icon
-                                AnimatedBuilder(
-                                  animation: _busAnimationController,
-                                  builder: (context, child) {
-                                    return Transform.translate(
-                                      offset: Offset(
-                                        10 * (1 - (_busAnimationController.value * 2 - 1).abs()),
-                                        0,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.directions_bus,
-                                          color: Colors.white,
-                                          size: 24,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Aagman',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  icon: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.analytics, color: Colors.white, size: 20),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const TravelAnalyticsScreen(
-                                          userId: 'user_001', // In production, use actual user ID
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.drive_eta, color: Colors.white, size: 20),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const DriverLoginScreen()),
-                                    );
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.notifications_none, color: Colors.white),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            
-                            // Location Display
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: _isLoadingLocation
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.location_on,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _currentLocation,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                if (!_isLoadingLocation && _currentPosition != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.success.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: const [
-                                        Icon(Icons.circle, color: Colors.white, size: 8),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Live',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                // Refresh button
-                                IconButton(
-                                  icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
-                                  onPressed: _refreshLocation,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Content
-              SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
                   children: [
-                    const SizedBox(height: 20),
-                    
-                    // Search Card with Enhanced Shadow
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [AppTheme.primary, AppTheme.primaryLight],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.search,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Plan Your Journey',
-                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            // From Location
-                            LocationDropdown(
-                              label: 'From',
-                              hint: 'Starting point',
-                              value: _fromLocation,
-                              onChanged: (value) {
-                                setState(() {
-                                  _fromLocation = value;
-                                });
-                              },
-                            ),
-                            
-                            // Animated Swap Button
-                            Center(
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 12),
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [AppTheme.primary, AppTheme.primaryLight],
-                                  ),
-                                  borderRadius: BorderRadius.circular(22),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.primary.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(22),
-                                    onTap: () {
-                                      setState(() {
-                                        final temp = _fromLocation;
-                                        _fromLocation = _toLocation;
-                                        _toLocation = temp;
-                                      });
-                                    },
-                                    child: const Icon(Icons.swap_vert, size: 22, color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            
-                            // To Location
-                            LocationDropdown(
-                              label: 'To',
-                              hint: 'Destination',
-                              value: _toLocation,
-                              onChanged: (value) {
-                                setState(() {
-                                  _toLocation = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            
-                            // Date Selector
-                            InkWell(
-                              onTap: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: _selectedDate,
-                                  firstDate: DateTime.now(),
-                                  lastDate: DateTime.now().add(const Duration(days: 30)),
-                                );
-                                if (date != null) {
-                                  setState(() {
-                                    _selectedDate = date;
-                                  });
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surfaceVariant,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.calendar_today, 
-                                        color: AppTheme.primary, size: 18),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    const Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            
-                            // Search Button with Gradient
-                            Container(
-                              width: double.infinity,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [AppTheme.primary, AppTheme.primaryLight],
-                                ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.primary.withOpacity(0.4),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  if (_fromLocation != null && _toLocation != null) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => BusSearchResultsScreen(
-                                          from: _fromLocation!,
-                                          to: _toLocation!,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.search, size: 22),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Search Buses',
-                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 17,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                    Text(
+                      'AAGMAN',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    
-                    // Nearby Buses Section
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.secondary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.near_me,
-                                  color: AppTheme.secondary,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Nearby Buses',
-                                style: Theme.of(context).textTheme.headlineSmall,
-                              ),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: () {},
-                                child: const Text('View All'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          
-                          // Dynamic nearby buses or loading state
-                          if (_isLoadingLocation)
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32.0),
-                                child: Column(
-                                  children: [
-                                    const CircularProgressIndicator(),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Finding nearby buses...',
-                                      style: Theme.of(context).textTheme.bodyMedium,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else if (_nearbyBuses.isEmpty)
-                            ...[
-                              // Fallback to sample data if no buses found
-                              _buildNearbyBusCard('Bus 42A', 'Arriving in 5 min', 'Government', true),
-                              const SizedBox(height: 12),
-                              _buildNearbyBusCard('Express 18', 'Arriving in 12 min', 'Private', false),
-                              const SizedBox(height: 12),
-                              _buildNearbyBusCard('Bus 7B', 'Arriving in 18 min', 'Government', false),
-                            ]
-                          else
-                            // Show fetched buses
-                            ..._nearbyBuses.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final bus = entry.value;
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: index < _nearbyBuses.length - 1 ? 12 : 0),
-                                child: _buildNearbyBusCard(
-                                  bus['name'] ?? 'Bus',
-                                  'Arriving soon',
-                                  bus['type'] ?? 'Government',
-                                  index == 0,
-                                ),
-                              );
-                            }).toList(),
-                        ],
+                    const Spacer(),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        border: Border.all(color: AppTheme.textPrimary, width: 3),
                       ),
+                      child: Icon(Icons.person, color: AppTheme.white, size: 20),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
+          ),
+          
+          // Scrollable Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      border: Border.all(color: AppTheme.textPrimary, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.textPrimary,
+                          offset: Offset(4, 4),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'WHERE TO?',
+                              hintStyle: GoogleFonts.spaceGrotesk(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textMuted.withOpacity(0.5),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.all(20),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // Handle search
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero,
+                                side: BorderSide(color: AppTheme.textPrimary, width: 3),
+                              ),
+                            ),
+                            child: Text(
+                              'GO',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.white,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Quick Access Buttons (3-column grid)
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                    children: [
+                      QuickAccessButton(
+                        icon: Icons.schedule,
+                        label: 'LIVE TIMES',
+                        iconBgColor: Color(0xFFFFE5E5),
+                        onTap: () {},
+                      ),
+                      QuickAccessButton(
+                        icon: Icons.route,
+                        label: 'ROUTES',
+                        iconBgColor: Color(0xFFE5F3FF),
+                        onTap: () {},
+                      ),
+                      QuickAccessButton(
+                        icon: Icons.star,
+                        label: 'SAVED',
+                        iconBgColor: Color(0xFFFFF9E5),
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Nearby Arrivals Section
+                  Text(
+                    'NEARBY ARRIVALS',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textMuted,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Horizontal Scrolling Bus Cards
+                  SizedBox(
+                    height: 200,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        BusCard(
+                          busNumber: '42A',
+                          destination: 'Central Station',
+                          eta: '2 MIN',
+                          capacity: 45,
+                          isLive: true,
+                        ),
+                        SizedBox(width: 12),
+                        BusCard(
+                          busNumber: '18',
+                          destination: 'Airport Express',
+                          eta: '8 MIN',
+                          capacity: 72,
+                        ),
+                        SizedBox(width: 12),
+                        BusCard(
+                          busNumber: '7B',
+                          destination: 'Tech Park',
+                          eta: '15 MIN',
+                          capacity: 28,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Analytics Card
+                  _buildAnalyticsCard(),
+                  const SizedBox(height: 24),
+                  
+                  // Map Section
+                  _buildMapSection(),
+                ],
+              ),
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: Container(
+      
+      // FAB
+      floatingActionButton: Container(
+        width: 64,
+        height: 64,
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.accent,
+          border: Border.all(color: AppTheme.textPrimary, width: 4),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+              color: AppTheme.textPrimary,
+              offset: Offset(4, 4),
+              blurRadius: 0,
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          selectedItemColor: AppTheme.primary,
-          unselectedItemColor: AppTheme.textSecondary,
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontSize: 12),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverLoginScreen()),
+              );
+            },
+            child: Icon(
+              Icons.directions_bus,
+              color: AppTheme.textPrimary,
+              size: 30,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              activeIcon: Icon(Icons.search),
-              label: 'Search',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.location_on_outlined),
-              activeIcon: Icon(Icons.location_on),
-              label: 'Track',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNearbyBusCard(String busName, String eta, String type, bool isClosest) {
+  Widget _buildAnalyticsCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isClosest ? AppTheme.primary.withOpacity(0.3) : AppTheme.border,
-          width: isClosest ? 2 : 1,
-        ),
+        color: AppTheme.primary,
+        border: Border.all(color: AppTheme.textPrimary, width: 3),
         boxShadow: [
           BoxShadow(
-            color: isClosest 
-                ? AppTheme.primary.withOpacity(0.15)
-                : Colors.black.withOpacity(0.04),
-            blurRadius: isClosest ? 16 : 8,
-            offset: const Offset(0, 4),
+            color: AppTheme.textPrimary,
+            offset: Offset(4, 4),
+            blurRadius: 0,
           ),
         ],
       ),
       child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: isClosest
-                  ? LinearGradient(
-                      colors: [AppTheme.primary, AppTheme.primaryLight],
-                    )
-                  : null,
-              color: isClosest ? null : AppTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.directions_bus,
-              color: isClosest ? Colors.white : AppTheme.primary,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
           Expanded(
+            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  busName,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
+                  '127',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.white,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isClosest 
-                            ? AppTheme.success.withOpacity(0.1)
-                            : AppTheme.textSecondary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                SizedBox(height: 4),
+                Text(
+                  'TRIPS THIS MONTH',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.white.withOpacity(0.9),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TravelAnalyticsScreen(userId: 'user_001'),
                       ),
-                      child: Icon(
-                        Icons.access_time,
-                        size: 14,
-                        color: isClosest ? AppTheme.success : AppTheme.textSecondary,
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.textPrimary,
+                      border: Border.all(color: AppTheme.white, width: 2),
+                    ),
+                    child: Text(
+                      'FULL REPORT',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.white,
+                        letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      eta,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: isClosest ? AppTheme.success : AppTheme.textSecondary,
-                        fontWeight: isClosest ? FontWeight.w600 : FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          SizedBox(width: 20),
+          Expanded(
+            child: _buildMiniBarChart(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniBarChart() {
+    final List<int> data = [45, 78, 62, 90, 55, 82, 70];
+    final int maxValue = data.reduce((a, b) => a > b ? a : b);
+    
+    return Container(
+      height: 100,
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppTheme.textPrimary,
+        border: Border.all(color: AppTheme.white, width: 2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: data.map((value) {
+          return Container(
+            width: 8,
+            height: (value / maxValue) * 80,
             decoration: BoxDecoration(
-              color: type == 'Government' 
-                  ? AppTheme.info.withOpacity(0.1)
-                  : AppTheme.warning.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: AppTheme.accent,
+              border: Border.all(color: AppTheme.white, width: 1),
             ),
-            child: Text(
-              type,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: type == 'Government' ? AppTheme.info : AppTheme.warning,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildMapSection() {
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.textPrimary, width: 3),
+      ),
+      child: Stack(
+        children: [
+          // Grayscale map placeholder
+          Container(
+            color: AppTheme.border,
+            child: Center(
+              child: Icon(
+                Icons.map,
+                size: 80,
+                color: AppTheme.textMuted.withOpacity(0.3),
               ),
+            ),
+          ),
+          
+          // Status Badge
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                border: Border.all(color: AppTheme.textPrimary, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.textPrimary,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppTheme.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '12 BUSES NEARBY',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Zoom Buttons
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Row(
+              children: [
+                _buildZoomButton(Icons.remove),
+                SizedBox(width: 8),
+                _buildZoomButton(Icons.add),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// Custom Painter for Bus Pattern Background
-class BusPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppTheme.primary
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    // Draw bus icons pattern
-    for (double x = 0; x < size.width; x += 100) {
-      for (double y = 0; y < size.height; y += 100) {
-        // Simple bus shape
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x, y, 40, 25),
-            const Radius.circular(4),
+  Widget _buildZoomButton(IconData icon) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        border: Border.all(color: AppTheme.textPrimary, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary,
+            offset: Offset(2, 2),
+            blurRadius: 0,
           ),
-          paint,
-        );
-        // Windows
-        canvas.drawRect(Rect.fromLTWH(x + 5, y + 5, 10, 8), paint);
-        canvas.drawRect(Rect.fromLTWH(x + 20, y + 5, 10, 8), paint);
-      }
-    }
+        ],
+      ),
+      child: Icon(icon, color: AppTheme.textPrimary, size: 20),
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-  
- 
- 

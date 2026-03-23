@@ -188,9 +188,8 @@ class _TravelAnalyticsScreenState extends State<TravelAnalyticsScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ..._routeFrequency.entries
-                          .toList()
-                          ..sort((a, b) => b.value.compareTo(a.value))
+                      ...(_routeFrequency.entries.toList()
+                          ..sort((a, b) => b.value.compareTo(a.value)))
                           .take(5)
                           .map((entry) => _buildRouteFrequencyCard(
                                 entry.key,
@@ -290,7 +289,7 @@ class _TravelAnalyticsScreenState extends State<TravelAnalyticsScreen> {
                       Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: AppTheme.surface,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Center(
@@ -330,9 +329,9 @@ class _TravelAnalyticsScreenState extends State<TravelAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,7 +408,7 @@ class _TravelAnalyticsScreenState extends State<TravelAnalyticsScreen> {
             child: LinearProgressIndicator(
               value: count / total,
               minHeight: 8,
-              backgroundColor: AppTheme.surfaceVariant,
+              backgroundColor: AppTheme.getSurfaceVariant(context),
               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
             ),
           ),

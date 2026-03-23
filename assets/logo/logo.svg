@@ -1,0 +1,25 @@
+<svg width="100%" viewBox="0 0 680 480" xmlns="http://www.w3.org/2000/svg">
+
+  <rect x="215" y="20" width="250" height="250" rx="36" fill="#1E1B2E" style="fill:rgb(30, 27, 46);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- MARK: a bold forward-pointing chevron — single stroke, open, architectural -->
+  <!-- Two thick arms forming a > shape, centered in icon -->
+  <polyline points="282,85 378,145 282,205" fill="none" stroke="#F5C842" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(245, 200, 66);color:rgb(255, 255, 255);stroke-width:26px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Second chevron, offset right, faded — depth + motion -->
+  <polyline points="318,85 414,145 318,205" fill="none" stroke="#F5C842" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" opacity="0.28" style="fill:none;stroke:rgb(245, 200, 66);color:rgb(255, 255, 255);stroke-width:26px;stroke-linecap:round;stroke-linejoin:round;opacity:0.28;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Icon border -->
+  <rect x="215" y="20" width="250" height="250" rx="36" fill="none" stroke="#F5C842" stroke-width="1" opacity="0.12" style="fill:none;stroke:rgb(245, 200, 66);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.12;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Wordmark -->
+  <text x="340" y="344" text-anchor="middle" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-size="58" font-weight="900" fill="#1E1B2E" letter-spacing="-1" style="fill:rgb(30, 27, 46);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Arial Black&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif;font-size:58px;font-weight:900;text-anchor:middle;dominant-baseline:auto">aagman</text>
+
+  <!-- Underline: gold short + faded -->
+  <rect x="215" y="355" width="48" height="4" rx="2" fill="#F5C842" style="fill:rgb(245, 200, 66);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <rect x="267" y="355" width="198" height="4" rx="2" fill="#1E1B2E" opacity="0.08" style="fill:rgb(30, 27, 46);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.08;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tagline -->
+  <text x="340" y="392" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="11" font-weight="500" fill="#AAAAAA" letter-spacing="5" style="fill:rgb(170, 170, 170);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Helvetica Neue&quot;, Arial, sans-serif;font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:auto">YOUR CITY.  ON TIME.</text>
+
+</svg>
