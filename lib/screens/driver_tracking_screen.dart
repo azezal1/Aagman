@@ -82,6 +82,8 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
+      if (!mounted) return;
+
       setState(() {
         _currentPosition = position;
         _updateCount++;
@@ -90,7 +92,9 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
 
       await _sendLocationToSupabase(position);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _status = 'Error: ${e.toString()}');
+      print('Location update error: $e');
     }
   }
 
@@ -105,13 +109,19 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
         'timestamp': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       });
+      
+      if (!mounted) return;
+      print('Location updated successfully: ${position.latitude}, ${position.longitude}');
     } catch (e) {
-      setState(() => _status = 'Upload error');
+      if (!mounted) return;
+      print('Supabase upload error: $e');
+      setState(() => _status = 'Upload error: ${e.toString()}');
     }
   }
 
   void _stopTracking() {
     _locationTimer?.cancel();
+    if (!mounted) return;
     setState(() {
       _isTracking = false;
       _status = 'Stopped';
@@ -123,7 +133,7 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: AppTheme.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
@@ -135,17 +145,41 @@ class _DriverTrackingScreenState extends State<DriverTrackingScreen> {
             }
           },
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const Text('Driver Mode'),
             Text(
-              widget.driverId,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+              'AAGMAN',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.primary,
+                border: Border.all(color: AppTheme.textPrimary, width: 2),
+              ),
+              child: Text(
+                'DRIVER',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 1,
+                ),
               ),
             ),
           ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2),
+          child: Container(
+            height: 2,
+            color: AppTheme.textPrimary,
+          ),
         ),
       ),
       body: Padding(

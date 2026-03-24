@@ -36,9 +36,18 @@
 - **[QUICK_START.md](QUICK_START.md)** - Quick setup guide
 - **[START_HERE.md](START_HERE.md)** - First steps for new developers
 
+### Authentication Setup
+- **[YOUR_QUESTION_ANSWERED.md](YOUR_QUESTION_ANSWERED.md)** ⭐⭐⭐ - "Stay logged in" - ANSWERED!
+- **[AUTH_QUICK_START.md](AUTH_QUICK_START.md)** ⭐ - Session persistence explained
+- **[SESSION_PERSISTENCE_EXPLAINED.md](SESSION_PERSISTENCE_EXPLAINED.md)** ⭐ - Visual flow diagrams
+- **[AUTHENTICATION_COMPLETE.md](AUTHENTICATION_COMPLETE.md)** ⭐ - Complete auth guide
+- **[AUTHENTICATION_GUIDE.md](AUTHENTICATION_GUIDE.md)** - Authentication overview
+- **[AUTHENTICATION_IMPLEMENTATION_GUIDE.md](AUTHENTICATION_IMPLEMENTATION_GUIDE.md)** - Implementation details
+
 ### Database Setup
 - **[SUPABASE_SETUP_INSTRUCTIONS.md](SUPABASE_SETUP_INSTRUCTIONS.md)** ⭐ - Database setup guide
 - **[SUPABASE_INTEGRATION.md](SUPABASE_INTEGRATION.md)** - Integration guide
+- **[DATABASE_CONNECTION_STATUS.md](DATABASE_CONNECTION_STATUS.md)** - Connection verification
 - **[supabase_setup.sql](supabase_setup.sql)** - Main database schema (SQL)
 - **[supabase_community_schema.sql](supabase_community_schema.sql)** - Community features schema (SQL)
 

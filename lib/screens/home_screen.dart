@@ -352,39 +352,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      
-      // FAB
-      floatingActionButton: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          color: AppTheme.accent,
-          border: Border.all(color: AppTheme.textPrimary, width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.textPrimary,
-              offset: Offset(4, 4),
-              blurRadius: 0,
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const DriverLoginScreen()),
-              );
-            },
-            child: Icon(
-              Icons.directions_bus,
-              color: AppTheme.textPrimary,
-              size: 30,
-            ),
-          ),
-        ),
-      ),
     );
   }
 

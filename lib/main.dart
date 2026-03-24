@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
-import 'screens/video_splash_screen.dart';
+import 'widgets/auth_check.dart';
 import 'providers/theme_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'services/notification_service.dart';
@@ -38,7 +38,7 @@ class BusTrackerApp extends StatelessWidget {
       title: 'Aagman',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const VideoSplashScreen(),
+      home: const AuthCheck(), // Auth check with splash screen
     );
   }
 }
